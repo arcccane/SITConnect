@@ -134,9 +134,9 @@ namespace SITConnect
         protected void resetAttemptsLeft()
         {
             SqlConnection connection = new SqlConnection(SITDBConnectionString);
-            string sql = "update Account SET Attempts=@Attempts WHERE Email=@Email";
+            string sql = "update Account SET AttemptsLeft=@AttemptsLeft WHERE Email=@Email";
             SqlCommand command = new SqlCommand(sql, connection);
-            command.Parameters.AddWithValue("@Attempts", 3);
+            command.Parameters.AddWithValue("@AttemptsLeft", 3);
             command.Parameters.AddWithValue("@Email", email);
             try
             {

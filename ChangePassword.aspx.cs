@@ -219,7 +219,7 @@ namespace SITConnect
             finally { connection.Close(); }
             return h;
         }
-        protected void protectandUpdatePassword(string email)
+        protected void protectPassword()
         {
             string pwd = HttpUtility.HtmlEncode(tb_new_pwd.Text.ToString().Trim());
             try
@@ -239,8 +239,6 @@ namespace SITConnect
                 byte[] hashWithSalt = hashing.ComputeHash(Encoding.UTF8.GetBytes(pwdWithSalt));
 
                 finalHash = Convert.ToBase64String(hashWithSalt);
-
-                updatePassword(finalHash, salt, email);
             }
             catch (Exception ex)
             {
@@ -326,14 +324,22 @@ namespace SITConnect
 
                             if (userHash.Equals(dbHash))
                             {
-                                if (!passwordTooNew(email))
+                                if (newpwd != oldpwd)
                                 {
-                                    protectandUpdatePassword(email);
-                                    Response.Redirect("Login.aspx", false);
+                                    if (!passwordTooNew(email))
+                                    {
+                                        protectPassword();
+                                        updatePassword(finalHash, salt, email);
+                                        Response.Redirect("Login.aspx", false);
+                                    }
+                                    else
+                                    {
+                                        lb_error.Text = "Password changed too recently.";
+                                    }
                                 }
                                 else
                                 {
-                                    lb_error.Text = "Password changed too recently.";
+                                    lb_error.Text = "Old and new password cannot be the same.";
                                 }
                             }
                             else

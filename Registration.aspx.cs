@@ -36,7 +36,7 @@ namespace SITConnect
             {
                 using (SqlConnection con = new SqlConnection(SITDBConnectionString))
                 {
-                    using (SqlCommand cmd = new SqlCommand("INSERT INTO Account VALUES(@FirstName, @LastName,@CreditCardInfo,@Email,@PasswordHash,@PasswordSalt,@DateOfBirth,@IV,@Key,@CreatedOn,@Attempts,@TotalFailedAttempts,@isLocked,@LockedDatetime)"))                    {
+                    using (SqlCommand cmd = new SqlCommand("INSERT INTO Account VALUES(@FirstName, @LastName,@CreditCardInfo,@Email,@PasswordHash,@PasswordSalt,@DateOfBirth,@IV,@Key,@CreatedOn,@AttemptsLeft,@TotalFailedAttempts,@isLocked,@LockedDatetime)"))                    {
                         using (SqlDataAdapter sda = new SqlDataAdapter())
                         {
                             cmd.CommandType = CommandType.Text;
@@ -51,7 +51,7 @@ namespace SITConnect
                             cmd.Parameters.AddWithValue("@IV", Convert.ToBase64String(IV));
                             cmd.Parameters.AddWithValue("@Key", Convert.ToBase64String(Key));
                             cmd.Parameters.AddWithValue("@CreatedOn", DateTime.Now);
-                            cmd.Parameters.AddWithValue("@Attempts", 3);
+                            cmd.Parameters.AddWithValue("@AttemptsLeft", 3);
                             cmd.Parameters.AddWithValue("TotalFailedAttempts", 0);
                             cmd.Parameters.AddWithValue("@isLocked", 0);
                             cmd.Parameters.AddWithValue("@LockedDatetime", DBNull.Value);

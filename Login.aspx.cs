@@ -119,11 +119,11 @@ namespace SITConnect
             public List<string> ErrorMessage { get; set; }
         }
 
-        public int getAttempts(string email)
+        public int getAttemptsLeft(string email)
         {
             int RetryAttempts = 0;
             SqlConnection connection = new SqlConnection(SITDBConnectionString);
-            string sql = "select Attempts FROM Account WHERE Email=@Email";
+            string sql = "select AttemptsLeft FROM Account WHERE Email=@Email";
             SqlCommand command = new SqlCommand(sql, connection);
             command.Parameters.AddWithValue("@Email", email);
             try
@@ -133,7 +133,7 @@ namespace SITConnect
                 {
                     while (reader.Read())
                     {
-                        RetryAttempts = Convert.ToInt32(reader["Attempts"]);
+                        RetryAttempts = Convert.ToInt32(reader["AttemptsLeft"]);
                     }
 
                 }
@@ -204,14 +204,14 @@ namespace SITConnect
             return isLocked;
         }
 
-        public void decreaseAttempts(int attempts,string email)
+        public void decreaseAttempts(int attemptsleft,string email)
         {
-            if (attempts > 0)
+            if (attemptsleft > 0)
             {
                 SqlConnection connection = new SqlConnection(SITDBConnectionString);
-                string sql = "update Account SET Attempts=@Attempts WHERE Email=@Email";
+                string sql = "update Account SET AttemptsLeft=@AttemptsLeft WHERE Email=@Email";
                 SqlCommand command = new SqlCommand(sql, connection);
-                command.Parameters.AddWithValue("@Attempts", attempts - 1);
+                command.Parameters.AddWithValue("@AttemptsLeft", attemptsleft - 1);
                 command.Parameters.AddWithValue("@Email", email);
                 try
                 {
@@ -278,9 +278,9 @@ namespace SITConnect
             if (isLocked)
             {
                 SqlConnection connection = new SqlConnection(SITDBConnectionString);
-                string sql = "update Account SET Attempts=@Attempts, isLocked=@isLocked, LockedDatetime=@LockedDatetime WHERE Email=@Email";
+                string sql = "update Account SET AttemptsLeft=@AttemptsLeft, isLocked=@isLocked, LockedDatetime=@LockedDatetime WHERE Email=@Email";
                 SqlCommand command = new SqlCommand(sql, connection);
-                command.Parameters.AddWithValue("@Attempts", 3);
+                command.Parameters.AddWithValue("@AttemptsLeft", 3);
                 command.Parameters.AddWithValue("@isLocked", false);
                 command.Parameters.AddWithValue("@LockedDatetime", DBNull.Value);
                 command.Parameters.AddWithValue("@Email", email);
@@ -300,7 +300,7 @@ namespace SITConnect
 
         public int accountRecovery(bool isLocked, string email)
         {
-            int diffinmins = 0;
+            int timePassedinMins = 0;
             if (isLocked)
             {
                 SqlConnection connection = new SqlConnection(SITDBConnectionString);
@@ -318,10 +318,10 @@ namespace SITConnect
                         {
                             if (reader["LockedDatetime"] != DBNull.Value)
                             {
-                                DateTime datetimeLocked = Convert.ToDateTime(reader["LockedDatetime"]);
-                                TimeSpan diff = DateTime.Now.Subtract(datetimeLocked);
-                                diffinmins = diff.Minutes;
-                                if (diffinmins >= 10)
+                                DateTime dateTimeOfAccountLock = Convert.ToDateTime(reader["LockedDatetime"]);
+                                TimeSpan timePassed = DateTime.Now.Subtract(dateTimeOfAccountLock);
+                                timePassedinMins = timePassed.Minutes;
+                                if (timePassedinMins >= 10)
                                 {
                                     unlockAccount(isLocked, email);
                                 }
@@ -336,7 +336,7 @@ namespace SITConnect
 
                 finally { connection.Close(); }
             }
-            return diffinmins;
+            return timePassedinMins;
         }
 
         public bool passwordExpired(string email)
@@ -413,13 +413,13 @@ namespace SITConnect
                 string dbHash = getDBHash(email);
                 string dbSalt = getDBSalt(email);
 
-                int RetryAttempts = getAttempts(email);
+                int RetryAttempts = getAttemptsLeft(email);
                 int TotalFailedAttempts = getTotalFailedAttempts(email);
                 bool isLocked = getIsLocked(email);
 
-                int recoverAccount = accountRecovery(isLocked, email);
+                int timePassedAfterLockOutinMins = accountRecovery(isLocked, email);
 
-                int minutesToUnlock = 10 - recoverAccount;
+                int minutesToUnlock = 10 - timePassedAfterLockOutinMins;
 
                 try
                 {
