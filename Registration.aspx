@@ -6,6 +6,12 @@
 <head runat="server">
     <title>SITConnect Registeration</title>
     <script src="https://www.google.com/recaptcha/api.js?render=6LctjlMdAAAAALvO9sUcOvgVa8S240iApRCsFQmQ"></script>
+    <script src="jquery-3.5.1.min.js"></script>
+    <style type="text/css">
+        .auto-style1 {
+            height: 47px;
+        }
+    </style>
 </head>
 <body>
     <form id="form1" runat="server">
@@ -17,127 +23,131 @@
                 <br />
             </h2>
             <fieldset>
-            <legend>Account Registration</legend>
+                <legend>Account Registration</legend>
                 <br />
-            <table class="style1">
-                <tr>
-                    <td class="style3">
-                        <asp:Label ID="Label2" runat="server" Text="First Name"></asp:Label>
-                    </td>
-                    <td class="style2">
-                        <asp:TextBox ID="tb_firstname" runat="server" Height="36px" Width="280px"></asp:TextBox>
-                        <%-- Only allow letters --%>
-                        <asp:RegularExpressionValidator ID="RegularExpressionValidator3" runat="server" ErrorMessage="Invalid first name" ControlToValidate="tb_firstname" ValidationExpression="(^[a-zA-Z]+$)" ForeColor="Red"></asp:RegularExpressionValidator>
-                        <asp:RequiredFieldValidator ID="RequiredFieldValidator1" runat="server" ControlToValidate="tb_firstname" ErrorMessage="First Name required" ForeColor="Red" Display="None"></asp:RequiredFieldValidator>
-                    </td>
-                </tr>
-                <tr>
-                    <td></td>
-                    <td></td>
-                </tr>
-                <tr>
-                    <td class="style3">
-                        <asp:Label ID="Label3" runat="server" Text="Last Name"></asp:Label>
-                    </td>
-                    <td class="style2">
-                        <asp:TextBox ID="tb_lastname" runat="server" Height="32px" Width="281px"></asp:TextBox>
-                        <%-- Only allow letters --%>
-                        <asp:RegularExpressionValidator ID="RegularExpressionValidator4" runat="server" ErrorMessage="Invalid last name" ValidationExpression="(^[a-zA-Z]+$)" ControlToValidate="tb_lastname" ForeColor="Red"></asp:RegularExpressionValidator>
-                        <asp:RequiredFieldValidator ID="RequiredFieldValidator2" runat="server" ErrorMessage="Last Name required" ControlToValidate="tb_lastname" ForeColor="Red" Display="None"></asp:RequiredFieldValidator>
-                    </td>
-                </tr>
-                <tr>
-                    <td></td>
-                    <td></td>
-                </tr>
-                <tr>
-                    <td class="style3">
-                        <asp:Label ID="Label4" runat="server" Text="Credit Card Info"></asp:Label>
-                    </td>
-                    <td class="style2">
-                        <asp:TextBox ID="tb_creditcard" runat="server" Height="32px" Width="281px"></asp:TextBox>
-                        <%-- for visa cards: 13 or 16 digits long, starts with 4, each digit should be 0-9, no alphabets and special characters--%>
-                        <asp:RegularExpressionValidator ID="RegularExpressionValidator2" runat="server" ErrorMessage="Invalid credit card" ControlToValidate="tb_creditcard" ValidationExpression="^4[0-9]{12}(?:[0-9]{3})?$" ForeColor="Red"></asp:RegularExpressionValidator>
-                        <asp:RequiredFieldValidator ID="RequiredFieldValidator3" runat="server" ErrorMessage="Credit Card Info required" ControlToValidate="tb_creditcard" ForeColor="Red" Display="None"></asp:RequiredFieldValidator>
-                    </td>
-                </tr>
-                <tr>
-                    <td></td>
-                    <td></td>
-                </tr>
-                <tr>
-                    <td class="style6">
-                        <asp:Label ID="Label5" runat="server" Text="Email address"></asp:Label>
-                    </td>
-                    <td class="style7">
-                        <asp:TextBox ID="tb_email" TextMode="Email" runat="server" Height="32px" Width="281px"></asp:TextBox>
-                        <%-- check if email is unique --%>
-                        <asp:Label ID="lbl_email" runat="server" Text=""></asp:Label>
-                        <%-- email regex --%>
-                        <asp:RegularExpressionValidator ID="RegularExpressionValidator1" runat="server" ErrorMessage="Invalid email format" ControlToValidate="tb_email" ForeColor="Red" ValidationExpression="^([a-zA-Z0-9_\-\.]+)@([a-zA-Z0-9_\-\.]+)\.([a-zA-Z]{2,5})$" Display="None"></asp:RegularExpressionValidator>
-                        <asp:RequiredFieldValidator ID="RequiredFieldValidator4" runat="server" ErrorMessage="Email required" ControlToValidate="tb_email" ForeColor="Red" Display="None"></asp:RequiredFieldValidator>
-                    </td>
-                </tr>
-                <tr>
-                    <td></td>
-                    <td></td>
-                </tr>
-                <tr>
-                    <td class="style3">
-                        <asp:Label ID="Label6" runat="server" Text="Password"></asp:Label>
-                    </td>
-                    <td class="style2">
-                        <asp:TextBox ID="tb_pwd" TextMode="Password" runat="server" Height="32px" Width="281px" onkeyup="javascript:validatePw()"></asp:TextBox>
-                        <asp:Label ID="lbl_pwdchecker" runat="server" Text=""></asp:Label>
-                        <asp:RequiredFieldValidator ID="RequiredFieldValidator5" runat="server" ErrorMessage="Password required" ControlToValidate="tb_pwd" Display="None" ForeColor="Red"></asp:RequiredFieldValidator>
-                    </td>
-                </tr>
-                <tr>
-                    <td></td>
-                    <td></td>
-                </tr>
-                <tr>
-                    <td class="style4">
-                        <asp:Label ID="Label7" runat="server" Text="Date of Birth"></asp:Label>
-                    </td>
-                    <td class="style2">
-                        <asp:TextBox ID="tb_date" runat="server" TextMode="Date" Height="32px" Width="285px"></asp:TextBox>
-                        <asp:RequiredFieldValidator ID="RequiredFieldValidator6" runat="server" ErrorMessage="Date of Birth required" ControlToValidate="tb_date" Display="None" ForeColor="Red"></asp:RequiredFieldValidator>
-                    </td>
-                </tr>
-                <tr>
-                    <td></td>
-                    <td></td>
-                </tr>
-                <tr>
-                    <td class="style5">
-                        <asp:Label ID="Label8" runat="server" Text="Photo"></asp:Label>
-                    </td>
-                    <td class="style2">
-                        <asp:FileUpload ID="fu_file" runat="server" />
-                        <asp:Label ID="lbl_photo" runat="server" Text=""></asp:Label>
-                    </td>
-                </tr>
-                <tr>
-                    <td></td>
-                    <td></td>
-                </tr>
-                <tr>
-                    <td class="style6"></td>
-                    <td class="style2">
-                        <asp:Button ID="btn_Reg" runat="server" Height="48px"
-                            OnClick="btn_Reg_Click" Text="Register" Width="288px" />
-                        <br />
-                        <br />
-                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                <table class="style1">
+                    <tr>
+                        <td class="style3">
+                            <asp:Label ID="Label2" runat="server" Text="First Name"></asp:Label>
+                        </td>
+                        <td class="style2">
+                            <asp:TextBox ID="tb_firstname" runat="server" Height="36px" Width="280px"></asp:TextBox>
+                            <%-- Only allow letters --%>
+                            <asp:RegularExpressionValidator ID="RegularExpressionValidator3" runat="server" ErrorMessage="Invalid first name" ControlToValidate="tb_firstname" ValidationExpression="(^[a-zA-Z]+$)" ForeColor="Red"></asp:RegularExpressionValidator>
+                            <asp:RequiredFieldValidator ID="RequiredFieldValidator1" runat="server" ControlToValidate="tb_firstname" ErrorMessage="First Name required" ForeColor="Red" Display="None"></asp:RequiredFieldValidator>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td class="style3">
+                            <asp:Label ID="Label3" runat="server" Text="Last Name"></asp:Label>
+                        </td>
+                        <td class="style2">
+                            <asp:TextBox ID="tb_lastname" runat="server" Height="32px" Width="281px"></asp:TextBox>
+                            <%-- Only allow letters --%>
+                            <asp:RegularExpressionValidator ID="RegularExpressionValidator4" runat="server" ErrorMessage="Invalid last name" ValidationExpression="(^[a-zA-Z]+$)" ControlToValidate="tb_lastname" ForeColor="Red"></asp:RegularExpressionValidator>
+                            <asp:RequiredFieldValidator ID="RequiredFieldValidator2" runat="server" ErrorMessage="Last Name required" ControlToValidate="tb_lastname" ForeColor="Red" Display="None"></asp:RequiredFieldValidator>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td class="style3">
+                            <asp:Label ID="Label4" runat="server" Text="Credit Card Info"></asp:Label>
+                        </td>
+                        <td class="style2">
+                            <asp:TextBox ID="tb_creditcard" runat="server" Height="32px" Width="281px"></asp:TextBox>
+                            <%-- for visa cards: 13 or 16 digits long, starts with 4, each digit should be 0-9, no alphabets and special characters--%>
+                            <asp:RegularExpressionValidator ID="RegularExpressionValidator2" runat="server" ErrorMessage="Invalid credit card" ControlToValidate="tb_creditcard" ValidationExpression="^4[0-9]{12}(?:[0-9]{3})?$" ForeColor="Red"></asp:RegularExpressionValidator>
+                            <asp:RequiredFieldValidator ID="RequiredFieldValidator3" runat="server" ErrorMessage="Credit Card Info required" ControlToValidate="tb_creditcard" ForeColor="Red" Display="None"></asp:RequiredFieldValidator>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td class="style6">
+                            <asp:Label ID="Label5" runat="server" Text="Email address"></asp:Label>
+                        </td>
+                        <td class="style7">
+                            <asp:TextBox ID="tb_email" TextMode="Email" runat="server" Height="32px" Width="281px"></asp:TextBox>
+                            <%-- email regex --%>
+                            <asp:RegularExpressionValidator ID="RegularExpressionValidator1" runat="server" ErrorMessage="Invalid email format" ControlToValidate="tb_email" ForeColor="Red" ValidationExpression="^([a-zA-Z0-9_\-\.]+)@([a-zA-Z0-9_\-\.]+)\.([a-zA-Z]{2,5})$"></asp:RegularExpressionValidator>
+                            <asp:RequiredFieldValidator ID="RequiredFieldValidator4" runat="server" ErrorMessage="Email required" ControlToValidate="tb_email" ForeColor="Red" Display="None"></asp:RequiredFieldValidator>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td class="style3">
+                            <asp:Label ID="Label6" runat="server" Text="Password"></asp:Label>
+                        </td>
+                        <td class="style2">
+                            <asp:TextBox ID="tb_pwd" TextMode="Password" runat="server" Height="32px" Width="281px" onkeyup="javascript:validatePw()"></asp:TextBox>
+                            <asp:Label ID="lbl_pwdchecker" runat="server" Text=""></asp:Label>
+                            <asp:RequiredFieldValidator ID="RequiredFieldValidator5" runat="server" ErrorMessage="Password required" ControlToValidate="tb_pwd" Display="None" ForeColor="Red"></asp:RequiredFieldValidator>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td class="auto-style1">
+                            <asp:Label ID="Label7" runat="server" Text="Date of Birth"></asp:Label>
+                        </td>
+                        <td class="auto-style1">
+                            <asp:TextBox ID="tb_date" runat="server" TextMode="Date" Height="32px" Width="285px"></asp:TextBox>
+                            <asp:RequiredFieldValidator ID="RequiredFieldValidator6" runat="server" ErrorMessage="Date of Birth required" ControlToValidate="tb_date" Display="None" ForeColor="Red"></asp:RequiredFieldValidator>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td class="style5">
+                            <asp:Label ID="Label8" runat="server" Text="Photo"></asp:Label>
+                        </td>
+                        <td class="style2">
+                            <asp:FileUpload ID="fu_file" runat="server"/>
+                            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                            <asp:RegularExpressionValidator ID="RegularExpressionValidator5" runat="server" ErrorMessage="Invalid Photo. Extensions allowed: .jpg, .jpeg, .png, .gif" ControlToValidate="fu_file" ValidationExpression="([^\s]+(\.(?i)(jpg|png|gif|bmp))$)" ForeColor="Red"></asp:RegularExpressionValidator>
+                            <asp:RequiredFieldValidator ID="RequiredFieldValidator7" runat="server" ErrorMessage="Photo required" ControlToValidate="fu_file" Display="None" ForeColor="Red"></asp:RequiredFieldValidator>
+                            <br />
+                        </td>
+                    </tr>
+                    
+                    <tr>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td class="style6"></td>
+                        <td class="style2">
+                            <asp:Button ID="btn_Reg" runat="server" Height="48px"
+                                OnClick="btn_Reg_Click" Text="Register" Width="288px" />
+                            <br />
+                            <br />
+                            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
                         <asp:HyperLink ID="HyperLink2" runat="server" ForeColor="Blue" NavigateUrl="~/Login.aspx">Login</asp:HyperLink>
-                    </td>
-                </tr>
-            </table>
-                <input type="hidden" id="g-recaptcha-response" name="g-recaptcha-response"/>
-            &nbsp;<br />
-            <asp:ValidationSummary ID="ValidationSummary1" runat="server" Display="Static" ForeColor="Red" />
-            <br />
+                        </td>
+                    </tr>
+                </table>
+                <input type="hidden" id="g-recaptcha-response" name="g-recaptcha-response" />
+                &nbsp;<br />
+                <%-- check if email is unique --%>
+                <asp:Label ID="lbl_email" runat="server" Text=""></asp:Label>
+                <asp:ValidationSummary ID="ValidationSummary1" runat="server" Display="Static" ForeColor="Red" />
+                <br />
             </fieldset>
         </div>
     </form>

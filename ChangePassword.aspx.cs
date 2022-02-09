@@ -17,12 +17,82 @@ namespace SITConnect
 {
     public partial class ChangePassword : System.Web.UI.Page
     {
-        string SITDBConnectionString = System.Configuration.ConfigurationManager.ConnectionStrings["SITDBConnection"].ConnectionString;
-        static string finalHash;
-        static string salt;
         protected void Page_Load(object sender, EventArgs e)
         {
 
+        }
+
+        string SITDBConnectionString = System.Configuration.ConfigurationManager.ConnectionStrings["SITDBConnection"].ConnectionString;
+        static string finalHash;
+        static string salt;
+
+        public class CaptchaResult
+        {
+            public string success { get; set; }
+            public List<string> ErrorMessage { get; set; }
+        }
+
+        public bool ValidateCaptcha()
+        {
+            bool result = true;
+            string captchaResponse = Request.Form["g-recaptcha-response"];
+            HttpWebRequest req = (HttpWebRequest)WebRequest.Create(" https://www.google.com/recaptcha/api/siteverify?secret=6LctjlMdAAAAAN9VSH1FzgvEefIqNShP6vCQymCP &response=" + captchaResponse);
+            try
+            {
+                // receive response from google
+                using (WebResponse wResponse = req.GetResponse())
+                {
+                    using (StreamReader readStream = new StreamReader(wResponse.GetResponseStream()))
+                    {
+                        string jsonResponse = readStream.ReadToEnd();
+
+                        JavaScriptSerializer js = new JavaScriptSerializer();
+                        CaptchaResult jsonObject = js.Deserialize<CaptchaResult>(jsonResponse);
+                        result = Convert.ToBoolean(jsonObject.success);
+                    }
+                }
+                return result;
+            }
+            catch (WebException ex)
+            {
+                throw ex;
+            }
+        }
+
+        private bool checkEmail(string email)
+        {
+            bool valid = true;
+
+            // check if email exists in db
+            SqlConnection connection = new SqlConnection(SITDBConnectionString);
+            string sql = "select * FROM ACCOUNT WHERE Email=@Email";
+            SqlCommand command = new SqlCommand(sql, connection);
+            command.Parameters.AddWithValue("@Email", email);
+            try
+            {
+                connection.Open();
+                using (SqlDataReader reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        if (reader["Email"] != DBNull.Value)
+                        {
+                            valid = false;
+                        }
+                    }
+
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception(ex.ToString());
+            }
+
+            finally
+            {
+                connection.Close();
+            }
+            return valid;
         }
 
         private int checkPassword(string password)
@@ -131,7 +201,7 @@ namespace SITConnect
                     {
                         DateTime passwordCreated = Convert.ToDateTime(reader["CreatedOn"]);
                         TimeSpan passwordAge = DateTime.Now.Subtract(passwordCreated);
-                        if (passwordAge.Minutes < 10)
+                        if (passwordAge.Minutes < 4320)
                         {
                             tooNew = true;
                         }
@@ -268,39 +338,6 @@ namespace SITConnect
             finally { connection.Close(); }
         }
 
-        public class CaptchaResult
-        {
-            public string success { get; set; }
-            public List<string> ErrorMessage { get; set; }
-        }
-
-        public bool ValidateCaptcha()
-        {
-            bool result = true;
-            string captchaResponse = Request.Form["g-recaptcha-response"];
-            HttpWebRequest req = (HttpWebRequest)WebRequest.Create(" https://www.google.com/recaptcha/api/siteverify?secret=6LctjlMdAAAAAN9VSH1FzgvEefIqNShP6vCQymCP &response=" + captchaResponse);
-            try
-            {
-                // receive response from google
-                using (WebResponse wResponse = req.GetResponse())
-                {
-                    using (StreamReader readStream = new StreamReader(wResponse.GetResponseStream()))
-                    {
-                        string jsonResponse = readStream.ReadToEnd();
-
-                        JavaScriptSerializer js = new JavaScriptSerializer();
-                        CaptchaResult jsonObject = js.Deserialize<CaptchaResult>(jsonResponse);
-                        result = Convert.ToBoolean(jsonObject.success);
-                    }
-                }
-                return result;
-            }
-            catch (WebException ex)
-            {
-                throw ex;
-            }
-        }
-
         protected void btn_Log_Click(object sender, EventArgs e)
         {
             if (ValidateCaptcha())
@@ -316,6 +353,11 @@ namespace SITConnect
                     string dbSalt = getDBSalt(email);
                     try
                     {
+                        if (checkEmail(email) == true)
+                        {
+                            lb_error.Text = "Email or password is incorrect. Please try again.";
+                        }
+
                         if (dbSalt != null && dbSalt.Length > 0 && dbHash != null && dbHash.Length > 0)
                         {
                             string pwdWithSalt = oldpwd + dbSalt;
@@ -334,7 +376,7 @@ namespace SITConnect
                                     }
                                     else
                                     {
-                                        lb_error.Text = "Password changed too recently.";
+                                        lb_error.Text = "Password is too new.";
                                     }
                                 }
                                 else
@@ -344,7 +386,7 @@ namespace SITConnect
                             }
                             else
                             {
-                                lb_error.Text = "Email or old password is not valid. Please try again.";
+                                lb_error.Text = "Email or old password is incorrect. Please try again.";
                             }
                         }
                     }

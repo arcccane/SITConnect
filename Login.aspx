@@ -74,13 +74,13 @@
             </fieldset>
         </div>
     </form>
-
-    <script>
-        grecaptcha.ready(function () {
-            grecaptcha.execute('6LctjlMdAAAAALvO9sUcOvgVa8S240iApRCsFQmQ', { action: 'Login' }).then(function (token) {
-                document.getElementById("g-recaptcha-response").value = token;
-            });
-        });
-    </script>
 </body>
 </html>
+
+<script>
+    grecaptcha.ready(function () {
+        grecaptcha.execute('6LctjlMdAAAAALvO9sUcOvgVa8S240iApRCsFQmQ', { action: 'Login' }).then(function (token) {
+            document.getElementById("g-recaptcha-response").value = token;
+        });
+    });
+</script>

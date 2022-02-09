@@ -115,6 +115,11 @@ namespace SITConnect
                         {
                             Key = Convert.FromBase64String(reader["Key"].ToString());
                         }
+                        if (reader["Photo"] != DBNull.Value)
+                        {
+                            string filename = Path.GetFileName(reader["Photo"].ToString());
+                            photo.ImageUrl = "~/Photos/" + filename;
+                        }
                     }
                     lbl_credit.Text = decryptData(creditcardinfo);
                 }
@@ -136,7 +141,7 @@ namespace SITConnect
             SqlConnection connection = new SqlConnection(SITDBConnectionString);
             string sql = "update Account SET AttemptsLeft=@AttemptsLeft WHERE Email=@Email";
             SqlCommand command = new SqlCommand(sql, connection);
-            command.Parameters.AddWithValue("@AttemptsLeft", 3);
+            command.Parameters.AddWithValue("@AttemptsLeft", 2);
             command.Parameters.AddWithValue("@Email", email);
             try
             {
@@ -154,9 +159,29 @@ namespace SITConnect
             }
         }
 
+        protected void setIsLoggedOut()
+        {
+            SqlConnection connection = new SqlConnection(SITDBConnectionString);
+            string sql = "update Account SET isLoggedIn=@isLoggedIn WHERE Email=@Email";
+            SqlCommand command = new SqlCommand(sql, connection);
+            command.Parameters.AddWithValue("@isLoggedIn", 0);
+            command.Parameters.AddWithValue("@Email", email);
+            try
+            {
+                connection.Open();
+                command.ExecuteReader();
+            }
+            catch (Exception ex)
+            {
+                throw new Exception(ex.ToString());
+            }
+
+            finally { connection.Close(); }
+        }
+
         protected void Logout(object sender, EventArgs e)
         {
-
+            setIsLoggedOut();
             resetAttemptsLeft();
 
             Session.Clear();

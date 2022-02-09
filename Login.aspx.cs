@@ -17,9 +17,79 @@ namespace SITConnect
     public partial class Login : System.Web.UI.Page
     {
         string SITDBConnectionString = System.Configuration.ConfigurationManager.ConnectionStrings["SITDBConnection"].ConnectionString;
+
         protected void Page_Load(object sender, EventArgs e)
         {
 
+        }
+
+        public class CaptchaResult
+        {
+            public string success { get; set; }
+            public List<string> ErrorMessage { get; set; }
+        }
+
+        public bool ValidateCaptcha()
+        {
+            bool result = true;
+            string captchaResponse = Request.Form["g-recaptcha-response"];
+            HttpWebRequest req = (HttpWebRequest)WebRequest.Create(" https://www.google.com/recaptcha/api/siteverify?secret=6LctjlMdAAAAAN9VSH1FzgvEefIqNShP6vCQymCP &response=" + captchaResponse);
+            try
+            {
+                // receive response from google
+                using (WebResponse wResponse = req.GetResponse())
+                {
+                    using (StreamReader readStream = new StreamReader(wResponse.GetResponseStream()))
+                    {
+                        string jsonResponse = readStream.ReadToEnd();
+
+                        JavaScriptSerializer js = new JavaScriptSerializer();
+                        CaptchaResult jsonObject = js.Deserialize<CaptchaResult>(jsonResponse);
+                        result = Convert.ToBoolean(jsonObject.success);
+                    }
+                }
+                return result;
+            }
+            catch (WebException ex)
+            {
+                throw ex;
+            }
+        }
+
+        private bool checkEmail(string email)
+        {
+            bool valid = true;
+
+            // check if email exists in db
+            SqlConnection connection = new SqlConnection(SITDBConnectionString);
+            string sql = "select * FROM ACCOUNT WHERE Email=@Email";
+            SqlCommand command = new SqlCommand(sql, connection);
+            command.Parameters.AddWithValue("@Email", email);
+            try
+            {
+                connection.Open();
+                using (SqlDataReader reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        if (reader["Email"] != DBNull.Value)
+                        {
+                            valid = false;
+                        }
+                    }
+
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception(ex.ToString());
+            }
+
+            finally
+            {
+                connection.Close();
+            }
+            return valid;
         }
 
         protected string getDBSalt(string email)
@@ -57,7 +127,6 @@ namespace SITConnect
             finally { connection.Close(); }
             return s;
         }
-
         protected string getDBHash(string email)
         {
             string h = null;
@@ -113,12 +182,6 @@ namespace SITConnect
             return decryptedString;
         }
 
-        public class CaptchaResult
-        {
-            public string success { get; set; }
-            public List<string> ErrorMessage { get; set; }
-        }
-
         public int getAttemptsLeft(string email)
         {
             int RetryAttempts = 0;
@@ -146,7 +209,6 @@ namespace SITConnect
             finally { connection.Close(); }
             return RetryAttempts;
         }
-
 
         public int getTotalFailedAttempts(string email)
         {
@@ -176,6 +238,34 @@ namespace SITConnect
             return totalFailedAttempts;
         }
 
+        public int getLoginCount(string email)
+        {
+            int logincount = 0;
+            SqlConnection connection = new SqlConnection(SITDBConnectionString);
+            string sql = "select LoginCount FROM Account WHERE Email=@Email";
+            SqlCommand command = new SqlCommand(sql, connection);
+            command.Parameters.AddWithValue("@Email", email);
+            try
+            {
+                connection.Open();
+                using (SqlDataReader reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        logincount = Convert.ToInt32(reader["LoginCount"]);
+                    }
+
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception(ex.ToString());
+            }
+
+            finally { connection.Close(); }
+            return logincount;
+        }
+
         public bool getIsLocked(string email)
         {
             bool isLocked = false;
@@ -203,7 +293,7 @@ namespace SITConnect
             finally { connection.Close(); }
             return isLocked;
         }
-
+        
         public void decreaseAttempts(int attemptsleft,string email)
         {
             if (attemptsleft > 0)
@@ -280,7 +370,7 @@ namespace SITConnect
                 SqlConnection connection = new SqlConnection(SITDBConnectionString);
                 string sql = "update Account SET AttemptsLeft=@AttemptsLeft, isLocked=@isLocked, LockedDatetime=@LockedDatetime WHERE Email=@Email";
                 SqlCommand command = new SqlCommand(sql, connection);
-                command.Parameters.AddWithValue("@AttemptsLeft", 3);
+                command.Parameters.AddWithValue("@AttemptsLeft", 2);
                 command.Parameters.AddWithValue("@isLocked", false);
                 command.Parameters.AddWithValue("@LockedDatetime", DBNull.Value);
                 command.Parameters.AddWithValue("@Email", email);
@@ -321,7 +411,7 @@ namespace SITConnect
                                 DateTime dateTimeOfAccountLock = Convert.ToDateTime(reader["LockedDatetime"]);
                                 TimeSpan timePassed = DateTime.Now.Subtract(dateTimeOfAccountLock);
                                 timePassedinMins = timePassed.Minutes;
-                                if (timePassedinMins >= 10)
+                                if (timePassedinMins >= 60)
                                 {
                                     unlockAccount(isLocked, email);
                                 }
@@ -356,7 +446,7 @@ namespace SITConnect
                     {
                         DateTime passwordCreated = Convert.ToDateTime(reader["CreatedOn"]);
                         TimeSpan passwordAge = DateTime.Now.Subtract(passwordCreated);
-                        if (passwordAge.Minutes > 10)
+                        if (passwordAge.Minutes > 129600)
                         {
                             expired = true;
                         }
@@ -372,31 +462,44 @@ namespace SITConnect
             return expired;
         }
 
-        public bool ValidateCaptcha()
+        protected void increaseLoginCount(int count, string email)
         {
-            bool result = true;
-            string captchaResponse = Request.Form["g-recaptcha-response"];
-            HttpWebRequest req = (HttpWebRequest)WebRequest.Create(" https://www.google.com/recaptcha/api/siteverify?secret=6LctjlMdAAAAAN9VSH1FzgvEefIqNShP6vCQymCP &response=" + captchaResponse);
+            SqlConnection connection = new SqlConnection(SITDBConnectionString);
+            string sql = "update Account SET LoginCount=@LoginCount WHERE Email=@Email";
+            SqlCommand command = new SqlCommand(sql, connection);
+            command.Parameters.AddWithValue("@LoginCount", count + 1);
+            command.Parameters.AddWithValue("@Email", email);
             try
             {
-                // receive response from google
-                using (WebResponse wResponse = req.GetResponse())
-                {
-                    using (StreamReader readStream = new StreamReader(wResponse.GetResponseStream()))
-                    {
-                        string jsonResponse = readStream.ReadToEnd();
-
-                        JavaScriptSerializer js = new JavaScriptSerializer();
-                        CaptchaResult jsonObject = js.Deserialize<CaptchaResult>(jsonResponse);
-                        result = Convert.ToBoolean(jsonObject.success);
-                    }
-                }
-                return result;
+                connection.Open();
+                command.ExecuteReader();
             }
-            catch (WebException ex)
+            catch (Exception ex)
             {
-                throw ex;
+                throw new Exception(ex.ToString());
             }
+
+            finally { connection.Close(); }
+        }
+
+        protected void setIsLoggedIn(string email)
+        {
+            SqlConnection connection = new SqlConnection(SITDBConnectionString);
+            string sql = "update Account SET isLoggedIn=@isLoggedIn WHERE Email=@Email";
+            SqlCommand command = new SqlCommand(sql, connection);
+            command.Parameters.AddWithValue("@isLoggedIn", 1);
+            command.Parameters.AddWithValue("@Email", email);
+            try
+            {
+                connection.Open();
+                command.ExecuteReader();
+            }
+            catch (Exception ex)
+            {
+                throw new Exception(ex.ToString());
+            }
+
+            finally { connection.Close(); }
         }
 
         protected void btn_Log_Click(object sender, EventArgs e)
@@ -415,14 +518,21 @@ namespace SITConnect
 
                 int RetryAttempts = getAttemptsLeft(email);
                 int TotalFailedAttempts = getTotalFailedAttempts(email);
+                int TotalLoginCount = getLoginCount(email);
                 bool isLocked = getIsLocked(email);
 
                 int timePassedAfterLockOutinMins = accountRecovery(isLocked, email);
 
-                int minutesToUnlock = 10 - timePassedAfterLockOutinMins;
+                int minutesToUnlock = 60 - timePassedAfterLockOutinMins;
 
                 try
                 {
+                    if (checkEmail(email) == true)
+                    {
+                        lb_error.Text = "Email or password is incorrect. Please try again.";
+                        lb_error2.Text = "";
+                    }
+
                     if (dbSalt != null && dbSalt.Length > 0 && dbHash != null && dbHash.Length > 0)
                     {
                         string pwdWithSalt = pwd + dbSalt;
@@ -444,30 +554,43 @@ namespace SITConnect
 
                                 Response.Cookies.Add(new HttpCookie("AuthToken", guid));
 
+                                setIsLoggedIn(email);
+                                increaseLoginCount(TotalLoginCount, email);
+
                                 Response.Redirect("Home.aspx", false);
-                                // throw new Exception();
                             }
                         }
                         else
                         {
                             if (RetryAttempts == 0)
                             {
-                                lockAccount(isLocked, email);
-                                if (isLocked == true)
+                                if (isLocked == false)
                                 {
-                                    if (minutesToUnlock >= 0)
+                                    lockAccount(isLocked, email);
+                                    increaseTotalFailedAttempts(TotalFailedAttempts, email);
+                                    lb_error.Text = "Account locked.";
+                                    lb_error2.Text = "";
+                                }
+                                else
+                                {
+                                    if (minutesToUnlock > 0)
                                     {
-                                        lb_error.Text = "Your account is locked. Unlock account in " + minutesToUnlock + " minutes.";
+                                        lb_error.Text = "Your account is locked. Unlock account automatically in " + minutesToUnlock + " minutes.";
+                                        lb_error2.Text = "";
+                                    }
+                                    else
+                                    {
+                                        lb_error.Text = "Account unlocked.";
                                         lb_error2.Text = "";
                                     }
                                 }
                             }
                             else
                             {
+                                lb_error.Text = "Password is incorrect. Please try again.";
+                                lb_error2.Text = "You have " + RetryAttempts + " attempts remaining.";
                                 decreaseAttempts(RetryAttempts, email);
                                 increaseTotalFailedAttempts(TotalFailedAttempts, email);
-                                lb_error.Text = "Email or password is not valid. Please try again.";
-                                lb_error2.Text = "You have " + RetryAttempts + " attempts remaining.";
                             }
                         }
                     }

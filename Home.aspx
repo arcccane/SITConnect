@@ -4,15 +4,16 @@
 
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head runat="server">
-    <title></title>
+    <title>SITConnect Home</title>
 </head>
 <body>
     <form id="form1" runat="server">
         <div>
-            <h2>SITConnect</h2>
+            <h2>SITConnect Home</h2>
             <fieldset>
                 <legend><asp:Label ID="lblMessage" runat="server" EnableViewState="false" /></legend>
                 <h2>Account Details</h2>
+                <asp:Image ID="photo" runat="server" Width="100" Height="100" />
                 <h3>First Name:
                 <asp:Label ID="lbl_firstname" runat="server"></asp:Label>
                 </h3>

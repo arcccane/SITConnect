@@ -14,6 +14,9 @@ using System.Windows.Forms;
 using System.Net;
 using System.IO;
 using System.Web.Script.Serialization;
+using System.Net.Configuration;
+using System.Configuration;
+using System.Net.Mail;
 
 namespace SITConnect
 {
@@ -21,113 +24,87 @@ namespace SITConnect
     {
         protected void Page_Load(object sender, EventArgs e)
         {
-
+            // throw new Exception();
         }
 
         string SITDBConnectionString = System.Configuration.ConfigurationManager.ConnectionStrings["SITDBConnection"].ConnectionString;
         static string finalHash;
         static string salt;
+        static string filepath;
         byte[] Key;
         byte[] IV;
+        static string otp;
 
-        protected void createAccount()
+        public class CaptchaResult
         {
+            public string success { get; set; }
+            public List<string> ErrorMessage { get; set; }
+        }
+
+        public bool ValidateCaptcha()
+        {
+            bool result = true;
+            string captchaResponse = Request.Form["g-recaptcha-response"];
+            HttpWebRequest req = (HttpWebRequest)WebRequest.Create(" https://www.google.com/recaptcha/api/siteverify?secret=6LctjlMdAAAAAN9VSH1FzgvEefIqNShP6vCQymCP &response=" + captchaResponse);
             try
             {
-                using (SqlConnection con = new SqlConnection(SITDBConnectionString))
+                // receive response from google
+                using (WebResponse wResponse = req.GetResponse())
                 {
-                    using (SqlCommand cmd = new SqlCommand("INSERT INTO Account VALUES(@FirstName, @LastName,@CreditCardInfo,@Email,@PasswordHash,@PasswordSalt,@DateOfBirth,@IV,@Key,@CreatedOn,@AttemptsLeft,@TotalFailedAttempts,@isLocked,@LockedDatetime)"))                    {
-                        using (SqlDataAdapter sda = new SqlDataAdapter())
+                    using (StreamReader readStream = new StreamReader(wResponse.GetResponseStream()))
+                    {
+                        string jsonResponse = readStream.ReadToEnd();
+
+                        JavaScriptSerializer js = new JavaScriptSerializer();
+                        CaptchaResult jsonObject = js.Deserialize<CaptchaResult>(jsonResponse);
+                        result = Convert.ToBoolean(jsonObject.success);
+                    }
+                }
+                return result;
+            }
+            catch (WebException ex)
+            {
+                throw ex;
+            }
+        }
+
+        private bool checkEmail()
+        {
+            bool valid = true;
+            string emailexists = "Email already registered";
+
+            // check if email exists in db
+            SqlConnection connection = new SqlConnection(SITDBConnectionString);
+            string sql = "select * FROM ACCOUNT WHERE Email=@Email";
+            SqlCommand command = new SqlCommand(sql, connection);
+            command.Parameters.AddWithValue("@Email", tb_email.Text);
+            try
+            {
+                connection.Open();
+                using (SqlDataReader reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        if (reader["Email"] != DBNull.Value)
                         {
-                            cmd.CommandType = CommandType.Text;
-                            cmd.Parameters.AddWithValue("@FirstName", tb_firstname.Text.Trim());
-                            cmd.Parameters.AddWithValue("@LastName", tb_lastname.Text.Trim());
-                            cmd.Parameters.AddWithValue("@CreditCardInfo", Convert.ToBase64String(encryptData(tb_creditcard.Text.Trim())));
-                            cmd.Parameters.AddWithValue("@Email", tb_email.Text.Trim());
-                            cmd.Parameters.AddWithValue("@PasswordHash", finalHash);
-                            cmd.Parameters.AddWithValue("@PasswordSalt", salt);
-                            cmd.Parameters.AddWithValue("@DateOfBirth", tb_date.Text.Trim());
-                            // cmd.Parameters.AddWithValue("@Photo", null);
-                            cmd.Parameters.AddWithValue("@IV", Convert.ToBase64String(IV));
-                            cmd.Parameters.AddWithValue("@Key", Convert.ToBase64String(Key));
-                            cmd.Parameters.AddWithValue("@CreatedOn", DateTime.Now);
-                            cmd.Parameters.AddWithValue("@AttemptsLeft", 3);
-                            cmd.Parameters.AddWithValue("TotalFailedAttempts", 0);
-                            cmd.Parameters.AddWithValue("@isLocked", 0);
-                            cmd.Parameters.AddWithValue("@LockedDatetime", DBNull.Value);
-                            cmd.Connection = con;
-                            try
-                            {
-                                con.Open();
-                                cmd.ExecuteNonQuery();
-                            }
-                            catch (Exception ex)
-                            {
-                                ex.ToString();
-                            }
-                            finally
-                            {
-                                con.Close();
-                            }
+                            lbl_email.Text = emailexists;
+                            lbl_email.ForeColor = Color.Red;
+                            valid = false;
                         }
                     }
+
                 }
             }
             catch (Exception ex)
             {
                 throw new Exception(ex.ToString());
             }
-        }
 
-        protected byte[] encryptData(string data)
-        {
-            byte[] cipherText = null;
-            try
+            finally
             {
-                RijndaelManaged cipher = new RijndaelManaged();
-                cipher.IV = IV;
-                cipher.Key = Key;
-                ICryptoTransform encryptTransform = cipher.CreateEncryptor();
-                byte[] plainText = Encoding.UTF8.GetBytes(data);
-                cipherText = encryptTransform.TransformFinalBlock(plainText, 0, plainText.Length);
+                connection.Close();
             }
-            catch (Exception ex)
-            {
-                throw new Exception(ex.ToString());
-            }
-            return cipherText;
-        }
-
-        protected void protectPassword()
-        {
-            string pwd = HttpUtility.HtmlEncode(tb_pwd.Text.ToString().Trim());
-            try
-            {
-                //Generate random salt 
-                RNGCryptoServiceProvider rng = new RNGCryptoServiceProvider();
-                byte[] saltByte = new byte[8];
-
-                //Fills array of bytes with a cryptographically strong sequence of random values.
-                rng.GetBytes(saltByte);
-                salt = Convert.ToBase64String(saltByte);
-
-                SHA512Managed hashing = new SHA512Managed();
-
-                string pwdWithSalt = pwd + salt;
-                byte[] plainHash = hashing.ComputeHash(Encoding.UTF8.GetBytes(pwd));
-                byte[] hashWithSalt = hashing.ComputeHash(Encoding.UTF8.GetBytes(pwdWithSalt));
-
-                finalHash = Convert.ToBase64String(hashWithSalt);
-
-                RijndaelManaged cipher = new RijndaelManaged();
-                cipher.GenerateKey();
-                Key = cipher.Key;
-                IV = cipher.IV;
-            } 
-            catch (Exception ex)
-            {
-                throw new Exception(ex.ToString());
-            }
+            return valid;
         }
 
         private int checkPassword(string password)
@@ -146,7 +123,7 @@ namespace SITConnect
             }
 
             // weak
-            if (Regex.IsMatch(password,"[a-z]"))
+            if (Regex.IsMatch(password, "[a-z]"))
             {
                 score++;
             }
@@ -219,79 +196,129 @@ namespace SITConnect
             return excellent;
         }
 
-        private bool checkEmail()
+        protected void processPhoto()
         {
-            bool valid = true;
-            string emailexists = "Email already registered";
+            if (fu_file.HasFile)
+            {
+                try
+                {
+                    string filename = Path.GetFileName(fu_file.FileName);
+                    filepath = Server.MapPath("~/Photos/") + filename;
+                    fu_file.SaveAs(filepath);
+                }
+                catch (Exception ex)
+                {
+                    throw ex;
+                }
+            }
+        }
 
-            // check if email exists in db
-            SqlConnection connection = new SqlConnection(SITDBConnectionString);
-            string sql = "select * FROM ACCOUNT WHERE Email=@Email";
-            SqlCommand command = new SqlCommand(sql, connection);
-            command.Parameters.AddWithValue("@Email", tb_email.Text);
+        protected byte[] encryptData(string data)
+        {
+            byte[] cipherText = null;
             try
             {
-                connection.Open();
-                using (SqlDataReader reader = command.ExecuteReader())
+                RijndaelManaged cipher = new RijndaelManaged();
+                cipher.IV = IV;
+                cipher.Key = Key;
+                ICryptoTransform encryptTransform = cipher.CreateEncryptor();
+                byte[] plainText = Encoding.UTF8.GetBytes(data);
+                cipherText = encryptTransform.TransformFinalBlock(plainText, 0, plainText.Length);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception(ex.ToString());
+            }
+            return cipherText;
+        }
+
+        protected void protectPassword()
+        {
+            string pwd = HttpUtility.HtmlEncode(tb_pwd.Text.ToString().Trim());
+            try
+            {
+                //Generate random salt 
+                RNGCryptoServiceProvider rng = new RNGCryptoServiceProvider();
+                byte[] saltByte = new byte[8];
+
+                //Fills array of bytes with a cryptographically strong sequence of random values.
+                rng.GetBytes(saltByte);
+                salt = Convert.ToBase64String(saltByte);
+
+                SHA512Managed hashing = new SHA512Managed();
+
+                string pwdWithSalt = pwd + salt;
+                byte[] plainHash = hashing.ComputeHash(Encoding.UTF8.GetBytes(pwd));
+                byte[] hashWithSalt = hashing.ComputeHash(Encoding.UTF8.GetBytes(pwdWithSalt));
+
+                finalHash = Convert.ToBase64String(hashWithSalt);
+
+                RijndaelManaged cipher = new RijndaelManaged();
+                cipher.GenerateKey();
+                Key = cipher.Key;
+                IV = cipher.IV;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception(ex.ToString());
+            }
+        }
+
+        protected void createAccount()
+        {
+            try
+            {
+                using (SqlConnection con = new SqlConnection(SITDBConnectionString))
                 {
-                    while (reader.Read())
+                    using (SqlCommand cmd = new SqlCommand("INSERT INTO Account VALUES(@FirstName, @LastName,@CreditCardInfo,@Email,@PasswordHash,@PasswordSalt,@DateOfBirth,@Photo,@IV,@Key,@CreatedOn,@AttemptsLeft,@TotalFailedAttempts,@LoginCount,@isLoggedIn,@isLocked,@LockedDatetime)"))
                     {
-                        if (reader["Email"] != DBNull.Value)
+                        using (SqlDataAdapter sda = new SqlDataAdapter())
                         {
-                            lbl_email.Text = emailexists;
-                            lbl_email.ForeColor = Color.Red;
-                            valid = false;
+                            cmd.CommandType = CommandType.Text;
+                            cmd.Parameters.AddWithValue("@FirstName", tb_firstname.Text.Trim());
+                            cmd.Parameters.AddWithValue("@LastName", tb_lastname.Text.Trim());
+                            cmd.Parameters.AddWithValue("@CreditCardInfo", Convert.ToBase64String(encryptData(tb_creditcard.Text.Trim())));
+                            cmd.Parameters.AddWithValue("@Email", tb_email.Text.Trim());
+                            cmd.Parameters.AddWithValue("@PasswordHash", finalHash);
+                            cmd.Parameters.AddWithValue("@PasswordSalt", salt);
+                            cmd.Parameters.AddWithValue("@DateOfBirth", tb_date.Text.Trim());
+                            cmd.Parameters.AddWithValue("@Photo", filepath);
+                            cmd.Parameters.AddWithValue("@IV", Convert.ToBase64String(IV));
+                            cmd.Parameters.AddWithValue("@Key", Convert.ToBase64String(Key));
+                            cmd.Parameters.AddWithValue("@CreatedOn", DateTime.Now);
+                            cmd.Parameters.AddWithValue("@AttemptsLeft", 2);
+                            cmd.Parameters.AddWithValue("TotalFailedAttempts", 0);
+                            cmd.Parameters.AddWithValue("@LoginCount", 0);
+                            cmd.Parameters.AddWithValue("@isLoggedIn", 0);
+                            cmd.Parameters.AddWithValue("@isLocked", 0);
+                            cmd.Parameters.AddWithValue("@LockedDatetime", DBNull.Value);
+                            cmd.Connection = con;
+                            try
+                            {
+                                con.Open();
+                                cmd.ExecuteNonQuery();
+                            }
+                            catch (Exception ex)
+                            {
+                                ex.ToString();
+                            }
+                            finally
+                            {
+                                con.Close();
+                            }
                         }
                     }
-
                 }
             }
             catch (Exception ex)
             {
                 throw new Exception(ex.ToString());
             }
-
-            finally
-            {
-                connection.Close();
-            }
-            return valid;
         }
-
-        public class CaptchaResult
-        {
-            public string success { get; set; }
-            public List<string> ErrorMessage { get; set; }
-        }
-
-        public bool ValidateCaptcha()
-        {
-            bool result = true;
-            string captchaResponse = Request.Form["g-recaptcha-response"];
-            HttpWebRequest req = (HttpWebRequest)WebRequest.Create(" https://www.google.com/recaptcha/api/siteverify?secret=6LctjlMdAAAAAN9VSH1FzgvEefIqNShP6vCQymCP &response=" + captchaResponse);
-            try
-            {
-                // receive response from google
-                using (WebResponse wResponse = req.GetResponse())
-                {
-                    using (StreamReader readStream = new StreamReader(wResponse.GetResponseStream()))
-                    {
-                        string jsonResponse = readStream.ReadToEnd();
-
-                        JavaScriptSerializer js = new JavaScriptSerializer();
-                        CaptchaResult jsonObject = js.Deserialize<CaptchaResult>(jsonResponse);
-                        result = Convert.ToBoolean(jsonObject.success);
-                    }
-                }
-                return result;
-            }
-            catch (WebException ex)
-            {
-                throw ex;
-            }
-        }
+        
         protected void btn_Reg_Click(object sender, EventArgs e)
         {
+            string email = tb_email.Text.ToString().Trim();
             if (ValidateCaptcha())
             {
                 if (checkEmail())
@@ -299,6 +326,7 @@ namespace SITConnect
                     if (feedBackPassword())
                     {
                         protectPassword();
+                        processPhoto();
                         createAccount();
                         Response.Redirect("Login.aspx", false);
                     }
