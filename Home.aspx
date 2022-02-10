@@ -12,7 +12,7 @@
             <h2>SITConnect Home</h2>
             <fieldset>
                 <legend><asp:Label ID="lblMessage" runat="server" EnableViewState="false" /></legend>
-                <h2>Account Details</h2>
+                <h2>Your Account Details</h2>
                 <asp:Image ID="photo" runat="server" Width="100" Height="100" />
                 <h3>First Name:
                 <asp:Label ID="lbl_firstname" runat="server"></asp:Label>
