@@ -159,13 +159,49 @@ namespace SITConnect
             }
         }
 
-        protected void setIsLoggedOut()
+        public int getAuditId()
+        {
+            int id = 0;
+            SqlConnection connection = new SqlConnection(SITDBConnectionString);
+            string sql = "select top 1 * from Audit WHERE Email=@Email order by Id desc";
+            SqlCommand command = new SqlCommand(sql, connection);
+            command.Parameters.AddWithValue("@LoggedOutDate", DateTime.Now);
+            command.Parameters.AddWithValue("@Email", email);
+            try
+            {
+                connection.Open();
+                using (SqlDataReader reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        if (reader["LoggedOutDate"] == DBNull.Value)
+                        {
+                            id = Convert.ToInt32(reader["Id"]);
+                        }
+                        
+                    }
+                }
+
+            }
+            catch (Exception ex)
+            {
+                throw new Exception(ex.ToString());
+            }
+
+            finally
+            {
+                connection.Close();
+            }
+            return id;
+        }
+
+        protected void auditLog(int id)
         {
             SqlConnection connection = new SqlConnection(SITDBConnectionString);
-            string sql = "update Account SET isLoggedIn=@isLoggedIn WHERE Email=@Email";
+            string sql = "update Audit SET LoggedOutDate=@LoggedOutDate WHERE @Id=Id";
             SqlCommand command = new SqlCommand(sql, connection);
-            command.Parameters.AddWithValue("@isLoggedIn", 0);
-            command.Parameters.AddWithValue("@Email", email);
+            command.Parameters.AddWithValue("@LoggedOutDate", DateTime.Now);
+            command.Parameters.AddWithValue("@Id", id);
             try
             {
                 connection.Open();
@@ -176,13 +212,16 @@ namespace SITConnect
                 throw new Exception(ex.ToString());
             }
 
-            finally { connection.Close(); }
+            finally
+            {
+                connection.Close();
+            }
         }
 
         protected void Logout(object sender, EventArgs e)
         {
-            setIsLoggedOut();
             resetAttemptsLeft();
+            auditLog(getAuditId());
 
             Session.Clear();
             Session.Abandon();

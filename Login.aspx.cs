@@ -1,16 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Data.SqlClient;
-using System.Drawing;
 using System.IO;
-using System.Linq;
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using System.Web;
 using System.Web.Script.Serialization;
-using System.Web.UI;
-using System.Web.UI.WebControls;
 
 namespace SITConnect
 {
@@ -210,62 +207,6 @@ namespace SITConnect
             return RetryAttempts;
         }
 
-        public int getTotalFailedAttempts(string email)
-        {
-            int totalFailedAttempts = 0;
-            SqlConnection connection = new SqlConnection(SITDBConnectionString);
-            string sql = "select TotalFailedAttempts FROM Account WHERE Email=@Email";
-            SqlCommand command = new SqlCommand(sql, connection);
-            command.Parameters.AddWithValue("@Email", email);
-            try
-            {
-                connection.Open();
-                using (SqlDataReader reader = command.ExecuteReader())
-                {
-                    while (reader.Read())
-                    {
-                        totalFailedAttempts = Convert.ToInt32(reader["TotalFailedAttempts"]);
-                    }
-
-                }
-            }
-            catch (Exception ex)
-            {
-                throw new Exception(ex.ToString());
-            }
-
-            finally { connection.Close(); }
-            return totalFailedAttempts;
-        }
-
-        public int getLoginCount(string email)
-        {
-            int logincount = 0;
-            SqlConnection connection = new SqlConnection(SITDBConnectionString);
-            string sql = "select LoginCount FROM Account WHERE Email=@Email";
-            SqlCommand command = new SqlCommand(sql, connection);
-            command.Parameters.AddWithValue("@Email", email);
-            try
-            {
-                connection.Open();
-                using (SqlDataReader reader = command.ExecuteReader())
-                {
-                    while (reader.Read())
-                    {
-                        logincount = Convert.ToInt32(reader["LoginCount"]);
-                    }
-
-                }
-            }
-            catch (Exception ex)
-            {
-                throw new Exception(ex.ToString());
-            }
-
-            finally { connection.Close(); }
-            return logincount;
-        }
-
         public bool getIsLocked(string email)
         {
             bool isLocked = false;
@@ -315,28 +256,6 @@ namespace SITConnect
 
                 finally { connection.Close(); }
             }
-        }
-
-        public void increaseTotalFailedAttempts(int totalfailedattempts, string email)
-        {
-            
-            SqlConnection connection = new SqlConnection(SITDBConnectionString);
-            string sql = "update Account SET TotalFailedAttempts=@TotalFailedAttempts WHERE Email=@Email";
-            SqlCommand command = new SqlCommand(sql, connection);
-            command.Parameters.AddWithValue("@TotalFailedAttempts", totalfailedattempts + 1);
-            command.Parameters.AddWithValue("@Email", email);
-            try
-            {
-                connection.Open();
-                command.ExecuteReader();
-            }
-            catch (Exception ex)
-            {
-                throw new Exception(ex.ToString());
-            }
-
-            finally { connection.Close(); }
-            
         }
 
         public void lockAccount(bool isLocked, string email)
@@ -462,44 +381,42 @@ namespace SITConnect
             return expired;
         }
 
-        protected void increaseLoginCount(int count, string email)
+        protected void auditLog()
         {
-            SqlConnection connection = new SqlConnection(SITDBConnectionString);
-            string sql = "update Account SET LoginCount=@LoginCount WHERE Email=@Email";
-            SqlCommand command = new SqlCommand(sql, connection);
-            command.Parameters.AddWithValue("@LoginCount", count + 1);
-            command.Parameters.AddWithValue("@Email", email);
             try
             {
-                connection.Open();
-                command.ExecuteReader();
+                using (SqlConnection con = new SqlConnection(SITDBConnectionString))
+                {
+                    using (SqlCommand cmd = new SqlCommand("INSERT INTO Audit VALUES(@Email, @LoggedInDate,@LoggedOutDate)"))
+                    {
+                        using (SqlDataAdapter sda = new SqlDataAdapter())
+                        {
+                            cmd.CommandType = CommandType.Text;
+                            cmd.Parameters.AddWithValue("@Email", tb_login_email.Text.Trim());
+                            cmd.Parameters.AddWithValue("@LoggedInDate", DateTime.Now);
+                            cmd.Parameters.AddWithValue("@LoggedOutDate", DBNull.Value);
+                            cmd.Connection = con;
+                            try
+                            {
+                                con.Open();
+                                cmd.ExecuteNonQuery();
+                            }
+                            catch (Exception ex)
+                            {
+                                ex.ToString();
+                            }
+                            finally
+                            {
+                                con.Close();
+                            }
+                        }
+                    }
+                }
             }
             catch (Exception ex)
             {
                 throw new Exception(ex.ToString());
             }
-
-            finally { connection.Close(); }
-        }
-
-        protected void setIsLoggedIn(string email)
-        {
-            SqlConnection connection = new SqlConnection(SITDBConnectionString);
-            string sql = "update Account SET isLoggedIn=@isLoggedIn WHERE Email=@Email";
-            SqlCommand command = new SqlCommand(sql, connection);
-            command.Parameters.AddWithValue("@isLoggedIn", 1);
-            command.Parameters.AddWithValue("@Email", email);
-            try
-            {
-                connection.Open();
-                command.ExecuteReader();
-            }
-            catch (Exception ex)
-            {
-                throw new Exception(ex.ToString());
-            }
-
-            finally { connection.Close(); }
         }
 
         protected void btn_Log_Click(object sender, EventArgs e)
@@ -517,8 +434,6 @@ namespace SITConnect
                 string dbSalt = getDBSalt(email);
 
                 int RetryAttempts = getAttemptsLeft(email);
-                int TotalFailedAttempts = getTotalFailedAttempts(email);
-                int TotalLoginCount = getLoginCount(email);
                 bool isLocked = getIsLocked(email);
 
                 int timePassedAfterLockOutinMins = accountRecovery(isLocked, email);
@@ -554,8 +469,7 @@ namespace SITConnect
 
                                 Response.Cookies.Add(new HttpCookie("AuthToken", guid));
 
-                                setIsLoggedIn(email);
-                                increaseLoginCount(TotalLoginCount, email);
+                                auditLog();
 
                                 Response.Redirect("Home.aspx", false);
                             }
@@ -567,7 +481,6 @@ namespace SITConnect
                                 if (isLocked == false)
                                 {
                                     lockAccount(isLocked, email);
-                                    increaseTotalFailedAttempts(TotalFailedAttempts, email);
                                     lb_error.Text = "Account locked.";
                                     lb_error2.Text = "";
                                 }
@@ -590,7 +503,6 @@ namespace SITConnect
                                 lb_error.Text = "Password is incorrect. Please try again.";
                                 lb_error2.Text = "You have " + RetryAttempts + " attempts remaining.";
                                 decreaseAttempts(RetryAttempts, email);
-                                increaseTotalFailedAttempts(TotalFailedAttempts, email);
                             }
                         }
                     }

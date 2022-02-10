@@ -1,22 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Web;
-using System.Web.UI;
-using System.Web.UI.WebControls;
 using System.Text.RegularExpressions;
 using System.Drawing;
 using System.Data.SqlClient;
 using System.Data;
 using System.Security.Cryptography;
 using System.Text;
-using System.Windows.Forms;
 using System.Net;
 using System.IO;
 using System.Web.Script.Serialization;
-using System.Net.Configuration;
-using System.Configuration;
-using System.Net.Mail;
 
 namespace SITConnect
 {
@@ -270,7 +263,7 @@ namespace SITConnect
             {
                 using (SqlConnection con = new SqlConnection(SITDBConnectionString))
                 {
-                    using (SqlCommand cmd = new SqlCommand("INSERT INTO Account VALUES(@FirstName, @LastName,@CreditCardInfo,@Email,@PasswordHash,@PasswordSalt,@DateOfBirth,@Photo,@IV,@Key,@CreatedOn,@AttemptsLeft,@TotalFailedAttempts,@LoginCount,@isLoggedIn,@isLocked,@LockedDatetime)"))
+                    using (SqlCommand cmd = new SqlCommand("INSERT INTO Account VALUES(@FirstName, @LastName,@CreditCardInfo,@Email,@PasswordHash,@PasswordSalt,@DateOfBirth,@Photo,@IV,@Key,@CreatedOn,@AttemptsLeft,@isLocked,@LockedDatetime)"))
                     {
                         using (SqlDataAdapter sda = new SqlDataAdapter())
                         {
@@ -287,9 +280,6 @@ namespace SITConnect
                             cmd.Parameters.AddWithValue("@Key", Convert.ToBase64String(Key));
                             cmd.Parameters.AddWithValue("@CreatedOn", DateTime.Now);
                             cmd.Parameters.AddWithValue("@AttemptsLeft", 2);
-                            cmd.Parameters.AddWithValue("TotalFailedAttempts", 0);
-                            cmd.Parameters.AddWithValue("@LoginCount", 0);
-                            cmd.Parameters.AddWithValue("@isLoggedIn", 0);
                             cmd.Parameters.AddWithValue("@isLocked", 0);
                             cmd.Parameters.AddWithValue("@LockedDatetime", DBNull.Value);
                             cmd.Connection = con;
@@ -318,7 +308,6 @@ namespace SITConnect
         
         protected void btn_Reg_Click(object sender, EventArgs e)
         {
-            string email = tb_email.Text.ToString().Trim();
             if (ValidateCaptcha())
             {
                 if (checkEmail())
