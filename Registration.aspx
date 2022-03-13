@@ -159,7 +159,7 @@
     function validatePw() {
         var str = document.getElementById('<%=tb_pwd.ClientID %>').value;
 
-        if (str.length < 8) {
+        if (str.length < 12) {
             document.getElementById("lbl_pwdchecker").innerHTML = "Password Length must be at least 12 characters";
             document.getElementById("lbl_pwdchecker").style.color = "Red";
             return ("too_short");
